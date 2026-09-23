@@ -1,5 +1,9 @@
 # DynamicBodySystem
 
+![Realistic concept art of a running human and husky with visible muscle motion](docs/images/dynamic-body-system-banner.jpg)
+
+*Concept artwork illustrating the intended visual direction; the plugin does not include these character assets.*
+
 An Unreal Engine 5.5+ runtime plugin for data-driven character muscle and soft-tissue **morphs**. The same code can be used with humans, dogs, or other skeletal creatures by authoring a profile and compatible morph targets for each mesh.
 
 ## Current scope (0.1.0)
