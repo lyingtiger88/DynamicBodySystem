@@ -1,0 +1,19 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "0.1.0",
+  "FriendlyName": "Dynamic Body System",
+  "Description": "Data-driven muscle and soft-tissue morph dynamics for skeletal characters.",
+  "Category": "Animation",
+  "CreatedBy": "DynamicBodySystem contributors",
+  "CanContainContent": true,
+  "IsBetaVersion": true,
+  "Installed": false,
+  "Modules": [
+    {
+      "Name": "DynamicBodySystem",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ]
+}
