@@ -101,6 +101,57 @@ struct DYNAMICBODYSYSTEM_API FDynamicTissueRegion
     int32 DetailTier = 2;
 };
 
+/** A subtle, authored vein-bulge morph. It should affect only the named anatomical region. */
+USTRUCT(BlueprintType)
+struct DYNAMICBODYSYSTEM_API FDynamicVascularRegion
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vascular")
+    FName MorphTarget;
+
+    /** Scale of the authored full morph. Keep the neutral mesh and output natural. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vascular", meta=(ClampMin="0.0", ClampMax="1.0"))
+    float MaximumWeight = 0.25f;
+
+    /** Detailed vein geometry defaults to High and above. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vascular", meta=(ClampMin="1", ClampMax="4"))
+    int32 DetailTier = 3;
+};
+
+/** Optional skin material and vein morph response to sustained exertion. */
+USTRUCT(BlueprintType)
+struct DYNAMICBODYSYSTEM_API FDynamicVascularSettings
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vascular")
+    bool bEnabled = false;
+
+    /** Exertion below this 0..1 input does not build a vascular response. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vascular", meta=(ClampMin="0.0", ClampMax="0.99"))
+    float ExertionThreshold = 0.55f;
+
+    /** Seconds to approach an active exertion level. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vascular", meta=(ClampMin="0.01"))
+    float BuildSeconds = 3.f;
+
+    /** Seconds to recover after exertion stops; the effect remains visible briefly at rest. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vascular", meta=(ClampMin="0.01"))
+    float RecoverySeconds = 12.f;
+
+    /** Response below this value is visually suppressed. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vascular", meta=(ClampMin="0.0", ClampMax="0.99"))
+    float VisibilityThreshold = 0.18f;
+
+    /** Reserved index in the mesh's Custom Primitive Data; -1 disables material output. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vascular", meta=(ClampMin="-1"))
+    int32 PrimitiveDataIndex = -1;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vascular")
+    TArray<FDynamicVascularRegion> Regions;
+};
+
 /** Mesh-specific bindings. Profiles are reusable across actors sharing a compatible rig. */
 UCLASS(BlueprintType)
 class DYNAMICBODYSYSTEM_API UDynamicBodyProfile : public UDataAsset
@@ -113,4 +164,7 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dynamic Body")
     TArray<FDynamicTissueRegion> TissueRegions;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dynamic Body")
+    FDynamicVascularSettings Vascular;
 };

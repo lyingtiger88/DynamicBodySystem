@@ -32,6 +32,14 @@ public:
     UFUNCTION(BlueprintPure, Category="Dynamic Body")
     EDynamicBodyQuality GetEffectiveQuality() const;
 
+    /** Call when the gameplay exertion level changes (0 at rest, 1 at maximum effort). */
+    UFUNCTION(BlueprintCallable, Category="Dynamic Body|Vascular")
+    void SetExertionIntensity(float Intensity);
+
+    /** Smoothed 0..1 vascular response, including the recovery period at rest. */
+    UFUNCTION(BlueprintPure, Category="Dynamic Body|Vascular")
+    float GetVascularIntensity() const { return VascularIntensity; }
+
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -48,10 +56,16 @@ private:
     FVector PreviousVelocity = FVector::ZeroVector;
     float TimeAccumulator = 0.f;
     bool bHasPreviousLocation = false;
+    float ExertionIntensity = 0.f;
+    float VascularIntensity = 0.f;
+    float LastAppliedVascular = -1.f;
+    bool bOutputsCleared = false;
 
     void ClearMorphs(const UDynamicBodyProfile* InProfile);
     void ResetSimulation();
     void UpdateMuscles(int32 ActiveTier);
     void SimulateTissues(float Step, const FVector& LocalAcceleration, int32 ActiveTier);
     void ApplyTissues(int32 ActiveTier);
+    void AdvanceVascular(float DeltaTime);
+    void ApplyVascular(int32 ActiveTier);
 };

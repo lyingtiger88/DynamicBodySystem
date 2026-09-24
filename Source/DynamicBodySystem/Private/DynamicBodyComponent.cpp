@@ -35,6 +35,14 @@ void UDynamicBodyComponent::SetProfile(UDynamicBodyProfile* NewProfile)
     ClearMorphs(Profile);
     Profile = NewProfile;
     ResetSimulation();
+    ExertionIntensity = 0.f;
+    VascularIntensity = 0.f;
+    bOutputsCleared = false;
+}
+
+void UDynamicBodyComponent::SetExertionIntensity(float Intensity)
+{
+    ExertionIntensity = FMath::IsFinite(Intensity) ? FMath::Clamp(Intensity, 0.f, 1.f) : 0.f;
 }
 
 EDynamicBodyQuality UDynamicBodyComponent::GetEffectiveQuality() const
@@ -74,6 +82,57 @@ void UDynamicBodyComponent::ClearMorphs(const UDynamicBodyProfile* InProfile)
     {
         if (!Region.PositiveMorphTarget.IsNone()) TargetMesh->SetMorphTarget(Region.PositiveMorphTarget, 0.f);
         if (!Region.NegativeMorphTarget.IsNone()) TargetMesh->SetMorphTarget(Region.NegativeMorphTarget, 0.f);
+    }
+    for (const FDynamicVascularRegion& Region : InProfile->Vascular.Regions)
+    {
+        if (!Region.MorphTarget.IsNone()) TargetMesh->SetMorphTarget(Region.MorphTarget, 0.f);
+    }
+    if (InProfile->Vascular.PrimitiveDataIndex >= 0)
+    {
+        TargetMesh->SetCustomPrimitiveDataFloat(InProfile->Vascular.PrimitiveDataIndex, 0.f);
+    }
+    LastAppliedVascular = -1.f;
+}
+
+void UDynamicBodyComponent::AdvanceVascular(float DeltaTime)
+{
+    const FDynamicVascularSettings& Settings = Profile->Vascular;
+    if (!Settings.bEnabled)
+    {
+        VascularIntensity = 0.f;
+        return;
+    }
+
+    const float Threshold = FMath::Clamp(Settings.ExertionThreshold, 0.f, 0.99f);
+    const float Target = FMath::Clamp((ExertionIntensity - Threshold) / (1.f - Threshold), 0.f, 1.f);
+    const float ResponseSeconds = FMath::Max(Target > VascularIntensity ? Settings.BuildSeconds : Settings.RecoverySeconds, 0.01f);
+    const float Blend = 1.f - FMath::Exp(-FMath::Max(DeltaTime, 0.f) / ResponseSeconds);
+    VascularIntensity = FMath::Clamp(FMath::Lerp(VascularIntensity, Target, Blend), 0.f, 1.f);
+}
+
+void UDynamicBodyComponent::ApplyVascular(int32 ActiveTier)
+{
+    const FDynamicVascularSettings& Settings = Profile->Vascular;
+    const float Threshold = FMath::Clamp(Settings.VisibilityThreshold, 0.f, 0.99f);
+    const float VisibleIntensity = Settings.bEnabled && ActiveTier >= 2
+        ? FMath::Clamp((VascularIntensity - Threshold) / (1.f - Threshold), 0.f, 1.f) : 0.f;
+
+    // A reserved Custom Primitive Data slot drives a character-specific skin mask without an MID per character.
+    if (Settings.PrimitiveDataIndex >= 0 &&
+        (LastAppliedVascular < 0.f || FMath::Abs(VisibleIntensity - LastAppliedVascular) >= 0.01f
+         || (VisibleIntensity == 0.f && LastAppliedVascular != 0.f)))
+    {
+        TargetMesh->SetCustomPrimitiveDataFloat(Settings.PrimitiveDataIndex, VisibleIntensity);
+        LastAppliedVascular = VisibleIntensity;
+    }
+    for (const FDynamicVascularRegion& Region : Settings.Regions)
+    {
+        if (!Region.MorphTarget.IsNone())
+        {
+            const float Weight = Region.DetailTier <= ActiveTier
+                ? VisibleIntensity * FMath::Clamp(Region.MaximumWeight, 0.f, 1.f) : 0.f;
+            TargetMesh->SetMorphTarget(Region.MorphTarget, Weight);
+        }
     }
 }
 
@@ -152,16 +211,22 @@ void UDynamicBodyComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
     if (!Profile || !TargetMesh || !IsValid(TargetMesh)) return;
     if (TissueStates.Num() != Profile->TissueRegions.Num()) ResetSimulation();
+    AdvanceVascular(DeltaTime);
 
     const EDynamicBodyQuality Quality = GetEffectiveQuality();
     const int32 Tier = Quality == EDynamicBodyQuality::Off ? 0 : static_cast<int32>(Quality);
     if (Tier == 0 || !TargetMesh->IsVisible())
     {
-        ClearMorphs(Profile);
-        ResetSimulation();
+        if (!bOutputsCleared)
+        {
+            ClearMorphs(Profile);
+            ResetSimulation();
+            bOutputsCleared = true;
+        }
         return;
     }
 
+    bOutputsCleared = false;
     UpdateMuscles(Tier);
     const FVector Location = TargetMesh->GetComponentLocation();
     if (!bHasPreviousLocation || DeltaTime <= SMALL_NUMBER || FVector::DistSquared(Location, PreviousLocation) > FMath::Square(300.f))
@@ -170,6 +235,7 @@ void UDynamicBodyComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
         PreviousVelocity = FVector::ZeroVector;
         bHasPreviousLocation = true;
         ApplyTissues(Tier);
+        ApplyVascular(Tier);
         return;
     }
 
@@ -188,4 +254,5 @@ void UDynamicBodyComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
         TimeAccumulator -= Step;
     }
     ApplyTissues(Tier);
+    ApplyVascular(Tier);
 }
