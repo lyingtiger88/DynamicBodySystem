@@ -40,6 +40,10 @@ public:
     UFUNCTION(BlueprintPure, Category="Dynamic Body|Vascular")
     float GetVascularIntensity() const { return VascularIntensity; }
 
+    /** Clears transient tissue, exertion and vascular state without changing the assigned profile. */
+    UFUNCTION(BlueprintCallable, Category="Dynamic Body")
+    void ResetBodyResponse();
+
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
