@@ -40,6 +40,16 @@ void UDynamicBodyComponent::SetProfile(UDynamicBodyProfile* NewProfile)
     bOutputsCleared = false;
 }
 
+void UDynamicBodyComponent::ResetBodyResponse()
+{
+    ClearMorphs(Profile);
+    ResetSimulation();
+    ExertionIntensity = 0.f;
+    VascularIntensity = 0.f;
+    LastAppliedVascular = -1.f;
+    bOutputsCleared = false;
+}
+
 void UDynamicBodyComponent::SetExertionIntensity(float Intensity)
 {
     ExertionIntensity = FMath::IsFinite(Intensity) ? FMath::Clamp(Intensity, 0.f, 1.f) : 0.f;
